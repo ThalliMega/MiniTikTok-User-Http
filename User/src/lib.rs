@@ -14,7 +14,7 @@ use bb8_bolt::{
 };
 use bb8_postgres::tokio_postgres::{self, NoTls};
 use combind_incoming::CombinedIncoming;
-use proto::auth_service_client::AuthServiceClient;
+use proto::{auth_service_client::AuthServiceClient, user_service_client::UserServiceClient};
 use tokio::task::JoinHandle;
 
 mod combind_incoming;
@@ -28,6 +28,7 @@ struct SharedState {
     postgres_pool: bb8::Pool<bb8_postgres::PostgresConnectionManager<NoTls>>,
     bolt_pool: bb8::Pool<bb8_bolt::Manager>,
     auth_client: AuthServiceClient<tonic::transport::Channel>,
+    user_client: UserServiceClient<tonic::transport::Channel>,
 }
 
 /// This function will initialize the [env-logger](https://docs.rs/env_logger) and start the server.  
@@ -63,6 +64,8 @@ pub fn start_up() -> Result<JoinHandle<Result<(), DynError>>, String> {
 
     let auth_url = get_env_var("AUTH_URL")?;
 
+    let user_url = get_env_var("USER_URL")?;
+
     let postgres_url = get_env_var("POSTGRES_URL")?;
 
     let mut postgres_config = tokio_postgres::config::Config::new();
@@ -79,6 +82,8 @@ pub fn start_up() -> Result<JoinHandle<Result<(), DynError>>, String> {
 
         let auth_client = AuthServiceClient::connect(auth_url).await?;
 
+        let user_client = UserServiceClient::connect(user_url).await?;
+
         let bolt_pool = bb8::Pool::builder().build(bolt_manager).await?;
 
         let router = Router::new()
@@ -92,6 +97,7 @@ pub fn start_up() -> Result<JoinHandle<Result<(), DynError>>, String> {
                 postgres_pool,
                 bolt_pool,
                 auth_client,
+                user_client,
             });
 
         hyper::Server::builder(CombinedIncoming::new(

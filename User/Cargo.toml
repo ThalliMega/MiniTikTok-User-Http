@@ -13,10 +13,10 @@ tokio = { version = "1", default-features = false, features = ["rt-multi-thread"
 bb8-postgres = "0"
 bb8-bolt = "0"
 tonic = { version = "0", default-features = false, features = ["codegen", "prost", "transport"] }
-axum = { version = "0", default-features = false, features = ["json"] }
+axum = { version = "0", default-features = false, features = ["json", "query"] }
 hyper = { version = "0", default-features = false }
 bb8 = { version = "0", default-features = false }
-serde_json = { version = "1", default-features = false, features = ["std"] }
+serde = { version = "1", default-features = false, features = ["derive"] }
 
 [build-dependencies]
 tonic-build = "0"
