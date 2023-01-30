@@ -107,7 +107,7 @@ pub fn start_up() -> Result<JoinHandle<Result<(), DynError>>, String> {
         .serve(root_router.into_make_service())
         .await?;
 
-        todo!()
+        Ok(())
     }))
 }
 
