@@ -1,0 +1,118 @@
+use std::{
+    env,
+    error::Error,
+    net::{Ipv4Addr, Ipv6Addr},
+};
+
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use bb8_bolt::{
+    bolt_client,
+    bolt_proto::version::{V4_3, V4_4},
+};
+use bb8_postgres::tokio_postgres::{self, NoTls};
+use combind_incoming::CombinedIncoming;
+use proto::auth_service_client::AuthServiceClient;
+use tokio::task::JoinHandle;
+
+mod combind_incoming;
+pub mod proto;
+mod user_service;
+
+type DynError = Box<dyn Error + Send + Sync>;
+
+#[derive(Clone)]
+struct SharedState {
+    postgres_pool: bb8::Pool<bb8_postgres::PostgresConnectionManager<NoTls>>,
+    bolt_pool: bb8::Pool<bb8_bolt::Manager>,
+    auth_client: AuthServiceClient<tonic::transport::Channel>,
+}
+
+/// This function will initialize the [env-logger](https://docs.rs/env_logger) and start the server.  
+/// Because this function will be used in integration tests,
+/// it will **NOT** block the main thread.
+///
+/// # Panics
+///
+/// Panics if called from **outside** of the Tokio runtime.
+pub fn start_up() -> Result<JoinHandle<Result<(), DynError>>, String> {
+    env_logger::init();
+
+    let bolt_metadata: bolt_client::Metadata = [
+        ("user_agent", "MiniTikTok-User-Http/0"),
+        ("scheme", "basic"),
+        (
+            "principal",
+            // TODO: String::leak
+            Box::leak(get_env_var("BOLT_USERNAME")?.into_boxed_str()),
+        ),
+        (
+            "credentials",
+            // TODO: String::leak
+            Box::leak(get_env_var("BOLT_PASSWORD")?.into_boxed_str()),
+        ),
+    ]
+    .into_iter()
+    .collect();
+
+    let bolt_url = get_env_var("BOLT_URL")?;
+
+    let bolt_domain = env::var("BOLT_DOMAIN").ok();
+
+    let auth_url = get_env_var("AUTH_URL")?;
+
+    let postgres_url = get_env_var("POSTGRES_URL")?;
+
+    let mut postgres_config = tokio_postgres::config::Config::new();
+    postgres_config.options(&postgres_url);
+
+    let postgres_manager = bb8_postgres::PostgresConnectionManager::new(postgres_config, NoTls);
+
+    Ok(tokio::spawn(async move {
+        let postgres_pool = bb8::Pool::builder().build(postgres_manager).await?;
+
+        let bolt_manager =
+            bb8_bolt::Manager::new(bolt_url, bolt_domain, [V4_4, V4_3, 0, 0], bolt_metadata)
+                .await?;
+
+        let auth_client = AuthServiceClient::connect(auth_url).await?;
+
+        let bolt_pool = bb8::Pool::builder().build(bolt_manager).await?;
+
+        let router = Router::new()
+            .route("/register/", post(user_service::register))
+            .route("/login/", post(user_service::login))
+            .route("/", get(user_service::info));
+
+        let root_router = Router::new()
+            .nest("/douyin/user", router)
+            .with_state(SharedState {
+                postgres_pool,
+                bolt_pool,
+                auth_client,
+            });
+
+        hyper::Server::builder(CombinedIncoming::new(
+            &(Ipv6Addr::UNSPECIFIED, 14514).into(),
+            &(Ipv4Addr::UNSPECIFIED, 14514).into(),
+        )?)
+        .serve(root_router.into_make_service())
+        .await?;
+
+        todo!()
+    }))
+}
+
+fn get_env_var(s: &str) -> Result<String, String> {
+    env::var(s).map_err(|_| format!("{s} doesn't exist"))
+}
+
+/// Build a runtime and block on a `Future`.
+pub fn block_on<F: std::future::Future>(f: F) -> Result<F::Output, std::io::Error> {
+    Ok(tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?
+        .block_on(f))
+}

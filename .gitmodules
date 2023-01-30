@@ -1,0 +1,3 @@
+[submodule "proto"]
+	path = User/proto
+	url = git@github.com:ThalliMega/MiniTikTok-Proto.git
