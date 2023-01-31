@@ -1,6 +1,7 @@
 use std::{
     env,
     error::Error,
+    future,
     net::{Ipv4Addr, Ipv6Addr},
 };
 
@@ -19,8 +20,8 @@ use tokio::task::JoinHandle;
 
 mod combind_incoming;
 pub mod proto;
-mod user_service;
 mod user_regist;
+mod user_service;
 
 type DynError = Box<dyn Error + Send + Sync>;
 
@@ -99,7 +100,11 @@ pub fn start_up() -> Result<JoinHandle<Result<(), DynError>>, String> {
                 bolt_pool,
                 auth_client,
                 user_client,
-            });
+            })
+            .route(
+                "/health_check",
+                get(|| future::ready(hyper::StatusCode::NO_CONTENT)),
+            );
 
         hyper::Server::builder(CombinedIncoming::new(
             &(Ipv6Addr::UNSPECIFIED, 14514).into(),

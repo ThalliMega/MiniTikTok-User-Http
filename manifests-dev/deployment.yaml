@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    annotations:
+        sidecar.jaegertracing.io/inject: 'true'
+    labels:
+        app: paraparty-xiaobin
+    name: bawling-minidouyin-user-http
+    namespace: bawling-minidouyin-user-http
+spec:
+    selector:
+        matchLabels:
+            name: paraparty-xiaobin
+    template:
+        metadata:
+            labels:
+                app: bawling-minidouyin-user-http
+                branch: dev
+                version: ${BUILD_NUMBER}-${CI_COMMIT_ID}
+                name: bawling-minidouyin-user-http
+                dream-app: bawling-minidouyin-user-http
+                dream-unit: bawling-minidouyin-user-http
+        spec:
+            imagePullSecrets:
+                -   name: regcred
+            containers:
+                -   image: ${IMAGE}
+                    imagePullPolicy: IfNotPresent
+                    name: bawling-minidouyin-user-http
+                    readinessProbe: # 如果你们有 /check_health 接口的话就加这一个段落，该接口返回 200 表示健康
+                        failureThreshold: 3
+                        httpGet:
+                            path: /health_check
+                            port: 14514
+                        initialDelaySeconds: 3
+                        periodSeconds: 10
+                        successThreshold: 1
+                        timeoutSeconds: 1
+                    lifecycle:
+                        preStop:
+                            exec:
+                                command:
+                                    - sleep
+                                    - "20"
+                    envFrom:
+                        -   configMapRef:
+                                name: env-config
+                        -   configMapRef:
+                                name: config
+            terminationGracePeriodSeconds: 30
