@@ -17,6 +17,7 @@ axum = { version = "0", default-features = false, features = ["json", "query"] }
 hyper = { version = "0", default-features = false }
 bb8 = { version = "0", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
+futures-io = { version = "0", default-features = false }
 
 [build-dependencies]
 tonic-build = "0"

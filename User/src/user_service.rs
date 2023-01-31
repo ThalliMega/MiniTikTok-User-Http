@@ -1,6 +1,6 @@
+use crate::AuthServiceClient;
 use axum::{
     extract::{Query, State},
-    response::IntoResponse,
     Json,
 };
 use log::{error, warn};
@@ -11,32 +11,32 @@ use crate::{
         token_response::TokenStatusCode, user_info_response::UserInfoStatusCode, TokenRequest,
         UserInfoRequest,
     },
+    user_regist::{bolt_regist, postgres_regist},
     SharedState,
 };
 
-#[derive(Deserialize)]
-pub(super) struct LoginReq {
-    username: String,
-    password: String,
+#[derive(Deserialize, Clone)]
+pub(crate) struct LoginReq {
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Serialize, Default)]
-pub(super) struct LoginRes {
-    status_code: i32,
-    status_msg: String,
-    user_id: u32,
-    token: String,
+pub(crate) struct LoginRes {
+    pub status_code: i32,
+    pub status_msg: &'static str,
+    pub user_id: u32,
+    pub token: String,
 }
 
-pub(super) async fn login(
-    State(mut conns): State<SharedState>,
-    Query(q): Query<LoginReq>,
+async fn real_login(
+    req: LoginReq,
+    auth_client: &mut AuthServiceClient<tonic::transport::Channel>,
 ) -> Json<LoginRes> {
-    match conns
-        .auth_client
+    match auth_client
         .retrive_token(TokenRequest {
-            username: q.username,
-            password: q.password,
+            username: req.username,
+            password: req.password,
         })
         .await
     {
@@ -67,8 +67,43 @@ pub(super) async fn login(
     }
 }
 
-pub(super) async fn register(State(conns): State<SharedState>) -> impl IntoResponse {
-    todo!()
+pub(crate) async fn login(
+    State(mut conns): State<SharedState>,
+    Query(q): Query<LoginReq>,
+) -> Json<LoginRes> {
+    real_login(q.into(), &mut conns.auth_client).await
+}
+
+pub(crate) async fn register(
+    State(mut conns): State<SharedState>,
+    Query(q): Query<LoginReq>,
+) -> Json<LoginRes> {
+    let bad_gateway = Json(LoginRes {
+        status_code: 502,
+        status_msg: "Bad Gateway",
+        ..Default::default()
+    });
+
+    let postgres_client = if let Ok(conn) = conns.postgres_pool.get().await {
+        conn
+    } else {
+        return bad_gateway;
+    };
+
+    let user_id = match postgres_regist(q.clone(), &postgres_client).await {
+        Err(e) => return Json(e),
+        Ok(id) => id,
+    };
+
+    let mut bolt_client = if let Ok(conn) = conns.bolt_pool.get().await {
+        conn
+    } else {
+        return bad_gateway;
+    };
+    // TODO: uncessary clone?
+    bolt_regist(q.username.clone(), user_id, &mut bolt_client).await;
+
+    real_login(q, &mut conns.auth_client).await
 }
 
 #[derive(Deserialize)]
@@ -80,7 +115,7 @@ pub(super) struct InfoReq {
 #[derive(Serialize)]
 pub(super) struct InfoRes {
     status_code: i32,
-    status_msg: String,
+    status_msg: &'static str,
     user: Option<UserInfo>,
 }
 

@@ -20,6 +20,7 @@ use tokio::task::JoinHandle;
 mod combind_incoming;
 pub mod proto;
 mod user_service;
+mod user_regist;
 
 type DynError = Box<dyn Error + Send + Sync>;
 
