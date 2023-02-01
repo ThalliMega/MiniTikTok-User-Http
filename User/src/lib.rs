@@ -111,6 +111,7 @@ pub fn start_up() -> Result<JoinHandle<Result<(), DynError>>, String> {
             &(Ipv4Addr::UNSPECIFIED, 14514).into(),
         )?)
         .serve(root_router.into_make_service())
+        .with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
         .await?;
 
         Ok(())
