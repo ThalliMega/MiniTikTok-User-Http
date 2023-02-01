@@ -6,7 +6,7 @@ metadata:
 spec:
     ports: # 自己写吧
         -   name: http
-            port: 8080
+            port: 14514
             protocol: TCP
             targetPort: 14514
     selector:

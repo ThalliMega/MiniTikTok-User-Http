@@ -27,21 +27,27 @@ spec:
                 -   image: ${IMAGE}
                     imagePullPolicy: IfNotPresent
                     name: bawling-minidouyin-user-http
-                    readinessProbe: # 如果你们有 /check_health 接口的话就加这一个段落，该接口返回 200 表示健康
+                    readinessProbe:
+                        httpGet:
+                            path: /health_check
+                            port: 14514
+                        initialDelaySeconds: 5
+                        periodSeconds: 5
+                        successThreshold: 2
+                    livenessProbe:
                         failureThreshold: 3
                         httpGet:
                             path: /health_check
                             port: 14514
-                        initialDelaySeconds: 3
+                        initialDelaySeconds: 10
                         periodSeconds: 10
-                        successThreshold: 1
                         timeoutSeconds: 1
-                    lifecycle:
-                        preStop:
-                            exec:
-                                command:
-                                    - sleep
-                                    - "20"
+                    # lifecycle:
+                    #     preStop:
+                    #         exec:
+                    #             command:
+                    #                 - sleep
+                    #                 - "20"
                     envFrom:
                         -   configMapRef:
                                 name: env-config

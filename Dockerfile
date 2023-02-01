@@ -21,3 +21,5 @@ COPY --from=build /src/target/release/${PACKAGE} ./
 ENTRYPOINT [ "./${PACKAGE}" ]
 
 EXPOSE 14514
+
+HEALTHCHECK CMD curl -f http://localhost:14514/health_check || exit 1
