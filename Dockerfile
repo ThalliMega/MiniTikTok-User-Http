@@ -16,9 +16,9 @@ RUN cargo build --release --frozen --bins
 
 FROM alpine
 WORKDIR /app
-ENV PACKAGE=mini_tiktok_user_http
-COPY --from=build /src/target/release/${PACKAGE} ./
-ENTRYPOINT [ "./${PACKAGE}" ]
+ARG PACKAGE=mini_tiktok_user_http
+COPY --from=build /src/target/release/${PACKAGE} ./bin
+ENTRYPOINT [ "./bin" ]
 
 EXPOSE 14514
 
