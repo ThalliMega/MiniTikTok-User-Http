@@ -10,7 +10,7 @@ metadata:
 spec:
     selector:
         matchLabels:
-            name: paraparty-xiaobin
+            name: bawling-minidouyin-user-http
     template:
         metadata:
             labels:
@@ -53,4 +53,6 @@ spec:
                                 name: env-config
                         -   configMapRef:
                                 name: config
+                    ports:
+                        -   containerPort: 14514
             terminationGracePeriodSeconds: 30
