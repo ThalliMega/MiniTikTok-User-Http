@@ -45,13 +45,13 @@ async fn real_login(
             match res.status_code() {
                 TokenStatusCode::Success => Json(LoginRes {
                     status_code: 0,
-                    status_msg: "Sucess".into(),
+                    status_msg: "Sucess",
                     user_id: res.user_id,
                     token: res.token,
                 }),
                 TokenStatusCode::Fail | TokenStatusCode::Unspecified => Json(LoginRes {
                     status_code: 403,
-                    status_msg: "Forbidden".into(),
+                    status_msg: "Forbidden",
                     ..Default::default()
                 }),
             }
@@ -60,7 +60,7 @@ async fn real_login(
             error!("{e}");
             Json(LoginRes {
                 status_code: 502,
-                status_msg: "Bad Gateway".into(),
+                status_msg: "Bad Gateway",
                 ..Default::default()
             })
         }
@@ -71,7 +71,7 @@ pub(crate) async fn login(
     State(mut conns): State<SharedState>,
     Query(q): Query<LoginReq>,
 ) -> Json<LoginRes> {
-    real_login(q.into(), &mut conns.auth_client).await
+    real_login(q, &mut conns.auth_client).await
 }
 
 pub(crate) async fn register(
@@ -145,7 +145,7 @@ pub(super) async fn info(
             match res.status_code() {
                 UserInfoStatusCode::Success => Json(InfoRes {
                     status_code: 0,
-                    status_msg: "Sucess".into(),
+                    status_msg: "Sucess",
                     user: Some(UserInfo {
                         id: res.user_id,
                         name: res.username,
@@ -158,18 +158,18 @@ pub(super) async fn info(
                     warn!("user info http service received an unspecified status");
                     Json(InfoRes {
                         status_code: 500,
-                        status_msg: "Can't recognize the status code sent by gateway.".into(),
+                        status_msg: "Can't recognize the status code sent by gateway.",
                         user: None,
                     })
                 }
                 UserInfoStatusCode::AuthFail => Json(InfoRes {
                     status_code: 401,
-                    status_msg: "Unauthorized".into(),
+                    status_msg: "Unauthorized",
                     user: None,
                 }),
                 UserInfoStatusCode::TargetNotFound => Json(InfoRes {
                     status_code: 404,
-                    status_msg: "Not Found".into(),
+                    status_msg: "Not Found",
                     user: None,
                 }),
             }
@@ -178,7 +178,7 @@ pub(super) async fn info(
             error!("{e}");
             Json(InfoRes {
                 status_code: 502,
-                status_msg: "Bad Gateway".into(),
+                status_msg: "Bad Gateway",
                 user: None,
             })
         }

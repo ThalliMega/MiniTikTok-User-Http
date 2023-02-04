@@ -38,7 +38,7 @@ pub(crate) async fn postgres_regist(
             error!("{e}");
             Err(LoginRes {
                 status_code: 502,
-                status_msg: "Bad Gateway".into(),
+                status_msg: "Bad Gateway",
                 ..Default::default()
             })
         }
@@ -69,7 +69,7 @@ pub(crate) async fn retrieve_id(
             error!("{e}");
             Err(LoginRes {
                 status_code: 502,
-                status_msg: "Bad Gateway".into(),
+                status_msg: "Bad Gateway",
                 ..Default::default()
             })
         }

@@ -16,7 +16,6 @@ use bb8_bolt::{
 use bb8_postgres::tokio_postgres::{self, NoTls};
 use combind_incoming::CombinedIncoming;
 use proto::{auth_service_client::AuthServiceClient, user_service_client::UserServiceClient};
-use tokio::task::JoinHandle;
 
 mod combind_incoming;
 pub mod proto;
@@ -40,7 +39,7 @@ struct SharedState {
 /// # Panics
 ///
 /// Panics if called from **outside** of the Tokio runtime.
-pub fn start_up() -> Result<JoinHandle<Result<(), DynError>>, String> {
+pub async fn start_up() -> Result<(), DynError> {
     env_logger::init();
 
     let bolt_metadata: bolt_client::Metadata = [
@@ -75,47 +74,44 @@ pub fn start_up() -> Result<JoinHandle<Result<(), DynError>>, String> {
 
     let postgres_manager = bb8_postgres::PostgresConnectionManager::new(postgres_config, NoTls);
 
-    Ok(tokio::spawn(async move {
-        let postgres_pool = bb8::Pool::builder().build(postgres_manager).await?;
+    let postgres_pool = bb8::Pool::builder().build(postgres_manager).await?;
 
-        let bolt_manager =
-            bb8_bolt::Manager::new(bolt_url, bolt_domain, [V4_4, V4_3, 0, 0], bolt_metadata)
-                .await?;
+    let bolt_manager =
+        bb8_bolt::Manager::new(bolt_url, bolt_domain, [V4_4, V4_3, 0, 0], bolt_metadata).await?;
 
-        let auth_client = AuthServiceClient::connect(auth_url).await?;
+    let auth_client = AuthServiceClient::connect(auth_url).await?;
 
-        let user_client = UserServiceClient::connect(user_url).await?;
+    let user_client = UserServiceClient::connect(user_url).await?;
 
-        let bolt_pool = bb8::Pool::builder().build(bolt_manager).await?;
+    let bolt_pool = bb8::Pool::builder().build(bolt_manager).await?;
 
-        let router = Router::new()
-            .route("/register/", post(user_service::register))
-            .route("/login/", post(user_service::login))
-            .route("/", get(user_service::info));
+    let router = Router::new()
+        .route("/register/", post(user_service::register))
+        .route("/login/", post(user_service::login))
+        .route("/", get(user_service::info));
 
-        let root_router = Router::new()
-            .nest("/douyin/user", router)
-            .with_state(SharedState {
-                postgres_pool,
-                bolt_pool,
-                auth_client,
-                user_client,
-            })
-            .route(
-                "/health_check",
-                get(|| future::ready(hyper::StatusCode::NO_CONTENT)),
-            );
+    let root_router = Router::new()
+        .nest("/douyin/user", router)
+        .with_state(SharedState {
+            postgres_pool,
+            bolt_pool,
+            auth_client,
+            user_client,
+        })
+        .route(
+            "/health_check",
+            get(|| future::ready(hyper::StatusCode::NO_CONTENT)),
+        );
 
-        hyper::Server::builder(CombinedIncoming::new(
-            &(Ipv6Addr::UNSPECIFIED, 14514).into(),
-            &(Ipv4Addr::UNSPECIFIED, 14514).into(),
-        )?)
-        .serve(root_router.into_make_service())
-        .with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
-        .await?;
+    hyper::Server::builder(CombinedIncoming::new(
+        &(Ipv6Addr::UNSPECIFIED, 14514).into(),
+        &(Ipv4Addr::UNSPECIFIED, 14514).into(),
+    )?)
+    .serve(root_router.into_make_service())
+    .with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
+    .await?;
 
-        Ok(())
-    }))
+    Ok(())
 }
 
 fn get_env_var(s: &str) -> Result<String, String> {
