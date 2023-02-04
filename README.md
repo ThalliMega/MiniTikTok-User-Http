@@ -2,7 +2,7 @@ This is *just* a homework project using [![Rust]](https://www.rust-lang.org "Rus
 
 # Ports
 
-Server listens on `0.0.0.0:14514` and `[::]:14514`.
+Server listens on `[::]:14514`.
 
 # Environment Variables
 
