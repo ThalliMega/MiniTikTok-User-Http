@@ -1,9 +1,4 @@
-use std::{
-    env,
-    error::Error,
-    future,
-    net::{Ipv4Addr, Ipv6Addr},
-};
+use std::{env, error::Error, future, net::Ipv6Addr};
 
 use axum::{
     routing::{get, post},
@@ -14,10 +9,8 @@ use bb8_bolt::{
     bolt_proto::version::{V4_3, V4_4},
 };
 use bb8_postgres::tokio_postgres::{self, NoTls};
-use combind_incoming::CombinedIncoming;
 use proto::{auth_service_client::AuthServiceClient, user_service_client::UserServiceClient};
 
-mod combind_incoming;
 pub mod proto;
 mod user_regist;
 mod user_service;
@@ -103,13 +96,10 @@ pub async fn start_up() -> Result<(), DynError> {
             get(|| future::ready(hyper::StatusCode::NO_CONTENT)),
         );
 
-    hyper::Server::builder(CombinedIncoming::new(
-        &(Ipv6Addr::UNSPECIFIED, 14514).into(),
-        &(Ipv4Addr::UNSPECIFIED, 14514).into(),
-    )?)
-    .serve(root_router.into_make_service())
-    .with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
-    .await?;
+    hyper::Server::bind(&(Ipv6Addr::UNSPECIFIED, 14514).into())
+        .serve(root_router.into_make_service())
+        .with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
+        .await?;
 
     Ok(())
 }
