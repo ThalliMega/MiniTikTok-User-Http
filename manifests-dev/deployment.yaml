@@ -4,7 +4,7 @@ metadata:
     annotations:
         sidecar.jaegertracing.io/inject: 'true'
     labels:
-        app: paraparty-xiaobin
+        app: bawling-minidouyin-user-http
     name: bawling-minidouyin-user-http
     namespace: bawling-minidouyin-user-http
 spec:
