@@ -58,9 +58,11 @@ pub async fn start_up() -> Result<(), DynError> {
 
     let bolt_domain = env::var("BOLT_DOMAIN").ok();
 
-    let auth_consul_url = get_env_var("AUTH_CONSUL_URL")?;
+    let service_discovery_url = get_env_var("SERVICE_DISCOVERY_URI")?;
 
-    let user_consul_url = get_env_var("USER_CONSUL_URL")?;
+    let auth_consul_url_suffix = get_env_var("AUTH_CONSUL_URL_SUFFIX")?;
+
+    let user_consul_url_suffix = get_env_var("USER_CONSUL_URL_SUFFIX")?;
 
     let postgres_url = get_env_var("POSTGRES_URL")?;
 
@@ -76,9 +78,17 @@ pub async fn start_up() -> Result<(), DynError> {
 
     let http_client = hyper::Client::new();
 
-    let auth_url = service_url(auth_consul_url.parse()?, &http_client).await?;
+    let auth_url = service_url(
+        format!("{service_discovery_url}{auth_consul_url_suffix}").parse()?,
+        &http_client,
+    )
+    .await?;
 
-    let user_url = service_url(user_consul_url.parse()?, &http_client).await?;
+    let user_url = service_url(
+        format!("{service_discovery_url}{user_consul_url_suffix}").parse()?,
+        &http_client,
+    )
+    .await?;
 
     let auth_client = AuthServiceClient::connect(auth_url.to_string()).await?;
 

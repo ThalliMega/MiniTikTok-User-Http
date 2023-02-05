@@ -25,18 +25,24 @@ The username of the graph database.
 
 The password of the graph database.
 
-### AUTH_CONSUL_URL
+### SERVICE_DISCOVERY_URI
 
-The url used to query the Auth Grpc service address using consul.  
-e.g. `http://consul-server.consul.svc.cluster.local:8500/v1/catalog/service/bawling-minidouyin-auth`
+The url of the consul service discovery service.
+Used as a direct prefix.  
+e.g. `http://consul-server.consul.svc.cluster.local:8500`
 
 *Note: Currenty doesn't support https.*
 
-### USER_CONSUL_URL
+### AUTH_CONSUL_URL_SUFFIX
+
+The url used to query the Auth Grpc service address using consul.
+This url is appended to [SERVICE_DISCOVERY_URI](#service_discovery_uri).  
+e.g. `/v1/catalog/service/bawling-minidouyin-auth`
+
+### USER_CONSUL_URL_SUFFIX
 
 The url used to query the User Grpc service address using consul.
-
-*Note: Currenty doesn't support https.*
+This url is appended to [SERVICE_DISCOVERY_URI](#service_discovery_uri).
 
 ### POSTGRES_URL
 
