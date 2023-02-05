@@ -25,13 +25,18 @@ The username of the graph database.
 
 The password of the graph database.
 
-### AUTH_URL
+### AUTH_CONSUL_URL
 
-The url of the Auth Grpc service.
+The url used to query the Auth Grpc service address using consul.  
+e.g. `http://consul-server.consul.svc.cluster.local:8500/v1/catalog/service/bawling-minidouyin-auth`
 
-### USER_URL
+*Note: Currenty doesn't support https.*
 
-The url of the User Grpc service.
+### USER_CONSUL_URL
+
+The url used to query the User Grpc service address using consul.
+
+*Note: Currenty doesn't support https.*
 
 ### POSTGRES_URL
 

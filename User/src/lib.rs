@@ -1,5 +1,6 @@
 use std::{env, error::Error, future, net::Ipv6Addr};
 
+use _dirty::service_url;
 use axum::{
     routing::{get, post},
     Router,
@@ -11,6 +12,7 @@ use bb8_bolt::{
 use bb8_postgres::tokio_postgres::{self, NoTls};
 use proto::{auth_service_client::AuthServiceClient, user_service_client::UserServiceClient};
 
+mod _dirty;
 pub mod proto;
 mod user_regist;
 mod user_service;
@@ -56,9 +58,9 @@ pub async fn start_up() -> Result<(), DynError> {
 
     let bolt_domain = env::var("BOLT_DOMAIN").ok();
 
-    let auth_url = get_env_var("AUTH_URL")?;
+    let auth_consul_url = get_env_var("AUTH_CONSUL_URL")?;
 
-    let user_url = get_env_var("USER_URL")?;
+    let user_consul_url = get_env_var("USER_CONSUL_URL")?;
 
     let postgres_url = get_env_var("POSTGRES_URL")?;
 
@@ -72,9 +74,15 @@ pub async fn start_up() -> Result<(), DynError> {
     let bolt_manager =
         bb8_bolt::Manager::new(bolt_url, bolt_domain, [V4_4, V4_3, 0, 0], bolt_metadata).await?;
 
-    let auth_client = AuthServiceClient::connect(auth_url).await?;
+    let http_client = hyper::Client::new();
 
-    let user_client = UserServiceClient::connect(user_url).await?;
+    let auth_url = service_url(auth_consul_url.parse()?, &http_client).await?;
+
+    let user_url = service_url(user_consul_url.parse()?, &http_client).await?;
+
+    let auth_client = AuthServiceClient::connect(auth_url.to_string()).await?;
+
+    let user_client = UserServiceClient::connect(user_url.to_string()).await?;
 
     let bolt_pool = bb8::Pool::builder().build(bolt_manager).await?;
 
