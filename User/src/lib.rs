@@ -60,9 +60,11 @@ pub async fn start_up() -> Result<(), DynError> {
 
     let service_discovery_url = get_env_var("SERVICE_DISCOVERY_URI")?;
 
-    let auth_consul_url_suffix = get_env_var("AUTH_CONSUL_URL_SUFFIX")?;
+    let auth_consul_url_suffix = env::var("AUTH_CONSUL_URL_SUFFIX")
+        .unwrap_or("/v1/catalog/service/bawling-minidouyin-auth".to_string());
 
-    let user_consul_url_suffix = get_env_var("USER_CONSUL_URL_SUFFIX")?;
+    let user_consul_url_suffix = env::var("USER_CONSUL_URL_SUFFIX")
+        .unwrap_or("/v1/catalog/service/bawling-minidouyin-user".to_string());
 
     let postgres_url = get_env_var("POSTGRES_URL")?;
 

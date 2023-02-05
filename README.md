@@ -12,9 +12,8 @@ Server listens on `[::]:14514`.
 
 The address of the graph database.
 
-### BOLT_DOMAIN
+### BOLT_DOMAIN (optional)
 
-This env var is optional.
 If set, TLS negotiation will be attempted.
 
 ### BOLT_USERNAME
@@ -33,26 +32,27 @@ e.g. `http://consul-server.consul.svc.cluster.local:8500`
 
 *Note: Currenty doesn't support https.*
 
-### AUTH_CONSUL_URL_SUFFIX
+### AUTH_CONSUL_URL_SUFFIX (optional)
 
 The url used to query the Auth Grpc service address using consul.
 This url is appended to [SERVICE_DISCOVERY_URI](#service_discovery_uri).  
-e.g. `/v1/catalog/service/bawling-minidouyin-auth`
+Default is `/v1/catalog/service/bawling-minidouyin-auth`
 
-### USER_CONSUL_URL_SUFFIX
+### USER_CONSUL_URL_SUFFIX (optional)
 
 The url used to query the User Grpc service address using consul.
-This url is appended to [SERVICE_DISCOVERY_URI](#service_discovery_uri).
+This url is appended to [SERVICE_DISCOVERY_URI](#service_discovery_uri).  
+Default is `/v1/catalog/service/bawling-minidouyin-user`
 
 ### POSTGRES_URL
 
 Check the [documention](https://docs.rs/tokio-postgres/latest/tokio_postgres/config/struct.Config.html) for details.
 
-### RUST_LOG
+### RUST_LOG (optional)
 
 Check the [documention](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) for details.
 
-### RUST_LOG_STYLE
+### RUST_LOG_STYLE (optional)
 
 Check the [documention](https://docs.rs/env_logger/latest/env_logger/#disabling-colors) for details.
 
