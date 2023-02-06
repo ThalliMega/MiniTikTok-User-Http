@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     proto::{
-        token_response::TokenStatusCode, user_info_response::UserInfoStatusCode, TokenRequest,
-        UserInfoRequest,
+        auth_response::AuthStatusCode, token_response::TokenStatusCode,
+        user_info_response::UserInfoStatusCode, AuthRequest, TokenRequest, UserInfoRequest,
     },
     user_regist::{bolt_regist, postgres_regist},
     SharedState,
@@ -132,11 +132,22 @@ pub(super) async fn info(
     State(mut conns): State<SharedState>,
     Query(q): Query<InfoReq>,
 ) -> Json<InfoRes> {
+    let user_id = match auth(q.token, conns.auth_client).await {
+        Some(id) => id,
+        None => {
+            return Json(InfoRes {
+                status_code: 401,
+                status_msg: "Unauthorized",
+                user: None,
+            })
+        }
+    };
+
     match conns
         .user_client
         .get_info(UserInfoRequest {
-            user_id: q.user_id,
-            token: q.token,
+            target_id: q.user_id,
+            self_id: user_id,
         })
         .await
     {
@@ -162,11 +173,6 @@ pub(super) async fn info(
                         user: None,
                     })
                 }
-                UserInfoStatusCode::AuthFail => Json(InfoRes {
-                    status_code: 401,
-                    status_msg: "Unauthorized",
-                    user: None,
-                }),
                 UserInfoStatusCode::TargetNotFound => Json(InfoRes {
                     status_code: 404,
                     status_msg: "Not Found",
@@ -182,5 +188,19 @@ pub(super) async fn info(
                 user: None,
             })
         }
+    }
+}
+
+async fn auth(
+    token: String,
+    mut auth_client: AuthServiceClient<tonic::transport::Channel>,
+) -> Option<u32> {
+    match auth_client
+        .auth(AuthRequest { token })
+        .await
+        .map(|r| r.into_inner())
+    {
+        Ok(res) if res.status_code() == AuthStatusCode::Success => res.user_id.into(),
+        _ => None,
     }
 }
