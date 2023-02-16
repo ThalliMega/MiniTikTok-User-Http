@@ -84,11 +84,12 @@ pub(crate) async fn register(
         ..Default::default()
     });
 
-    let postgres_client = if let Ok(conn) = conns.postgres_pool.get().await {
-        conn
-    } else {
-        error!("Connect to Postgres failed");
-        return bad_gateway;
+    let postgres_client = match conns.postgres_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Connect to Postgres failed: {e}");
+            return bad_gateway;
+        }
     };
 
     let user_id = match postgres_regist(q.clone(), &postgres_client).await {
@@ -202,6 +203,10 @@ async fn auth(
         .map(|r| r.into_inner())
     {
         Ok(res) if res.status_code() == AuthStatusCode::Success => res.user_id.into(),
+        Err(e) => {
+            error!("{e}");
+            None
+        }
         _ => None,
     }
 }
