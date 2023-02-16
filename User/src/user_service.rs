@@ -87,6 +87,7 @@ pub(crate) async fn register(
     let postgres_client = if let Ok(conn) = conns.postgres_pool.get().await {
         conn
     } else {
+        error!("Connect to Postgres failed");
         return bad_gateway;
     };
 
