@@ -8,7 +8,7 @@ use bb8_bolt::{
     bolt_client,
     bolt_proto::version::{V4_3, V4_4},
 };
-use bb8_postgres::tokio_postgres::{self, NoTls};
+use bb8_postgres::tokio_postgres::NoTls;
 use proto::{auth_service_client::AuthServiceClient, user_service_client::UserServiceClient};
 
 pub mod proto;
@@ -62,8 +62,7 @@ pub async fn start_up() -> Result<(), DynError> {
 
     let postgres_url = get_env_var("POSTGRES_URL")?;
 
-    let mut postgres_config = tokio_postgres::config::Config::new();
-    postgres_config.options(&postgres_url);
+    let postgres_config = postgres_url.parse()?;
 
     let postgres_manager = bb8_postgres::PostgresConnectionManager::new(postgres_config, NoTls);
 
