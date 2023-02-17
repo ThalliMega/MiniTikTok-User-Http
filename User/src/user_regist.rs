@@ -1,5 +1,5 @@
 use bb8_bolt::{bolt_client, bolt_proto};
-use bb8_postgres::tokio_postgres;
+use bb8_postgres::tokio_postgres::{self, error::SqlState};
 use futures_io::{AsyncRead, AsyncWrite};
 use log::{error, warn};
 
@@ -34,14 +34,21 @@ pub(crate) async fn postgres_regist(
                 })
             }
         }
-        Err(e) => {
-            error!("{e}");
-            Err(LoginRes {
-                status_code: 502,
-                status_msg: "Bad Gateway",
+        Err(e) => match e.as_db_error() {
+            Some(e) if e.code() == &SqlState::UNIQUE_VIOLATION => Err(LoginRes {
+                status_code: 403,
+                status_msg: "username occupied",
                 ..Default::default()
-            })
-        }
+            }),
+            _ => {
+                error!("{e}");
+                Err(LoginRes {
+                    status_code: 502,
+                    status_msg: "Bad Gateway",
+                    ..Default::default()
+                })
+            }
+        },
     }
 }
 

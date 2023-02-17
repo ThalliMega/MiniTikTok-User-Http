@@ -25,7 +25,7 @@ pub(crate) struct LoginReq {
 pub(crate) struct LoginRes {
     pub status_code: i32,
     pub status_msg: &'static str,
-    pub user_id: u32,
+    pub user_id: i64,
     pub token: String,
 }
 
@@ -110,7 +110,7 @@ pub(crate) async fn register(
 
 #[derive(Deserialize)]
 pub(super) struct InfoReq {
-    user_id: u32,
+    user_id: i64,
     token: String,
 }
 
@@ -123,10 +123,10 @@ pub(super) struct InfoRes {
 
 #[derive(Serialize)]
 struct UserInfo {
-    id: u32,
+    id: i64,
     name: String,
-    follow_count: u32,
-    follower_count: u32,
+    follow_count: i64,
+    follower_count: i64,
     is_follow: bool,
 }
 
@@ -196,7 +196,7 @@ pub(super) async fn info(
 async fn auth(
     token: String,
     mut auth_client: AuthServiceClient<tonic::transport::Channel>,
-) -> Option<u32> {
+) -> Option<i64> {
     match auth_client
         .auth(AuthRequest { token })
         .await
