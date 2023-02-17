@@ -1,5 +1,6 @@
 use std::{env, error::Error, future, net::Ipv6Addr};
 
+use argon2::Argon2;
 use axum::{
     routing::{get, post},
     Router,
@@ -25,6 +26,7 @@ struct SharedState {
     bolt_pool: bb8::Pool<bb8_bolt::Manager>,
     auth_client: AuthServiceClient<tonic::transport::Channel>,
     user_client: UserServiceClient<tonic::transport::Channel>,
+    argon2: Argon2<'static>,
 }
 
 /// This function will initialize the [env-logger](https://docs.rs/env_logger) and start the server.  
@@ -91,6 +93,7 @@ pub async fn start_up() -> Result<(), DynError> {
             bolt_pool,
             auth_client,
             user_client,
+            argon2: Argon2::default(),
         })
         .route(
             "/health_check",
@@ -122,4 +125,34 @@ pub fn block_on<F: std::future::Future>(f: F) -> Result<F::Output, std::io::Erro
         .enable_all()
         .build()?
         .block_on(f))
+}
+
+#[cfg(test)]
+mod t {
+    use argon2::{
+        password_hash::{rand_core::OsRng, SaltString},
+        Argon2, PasswordHasher,
+    };
+    #[test]
+    fn hash_len_eq_32() {
+        let salt = SaltString::generate(&mut OsRng);
+        let password = "1".repeat(32);
+        let argon2 = Argon2::default();
+
+        let hash = argon2
+            .hash_password(password.as_bytes(), &salt)
+            .unwrap()
+            .to_string();
+
+        assert_eq!(hash.len(), 96, "{hash} len: {}", hash.len());
+
+        let salt = SaltString::generate(&mut OsRng);
+        let password = "114514";
+        let hash = argon2
+            .hash_password(password.as_bytes(), &salt)
+            .unwrap()
+            .to_string();
+
+        assert_eq!(hash.len(), 96, "{hash} len: {}", hash.len());
+    }
 }

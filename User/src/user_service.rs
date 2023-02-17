@@ -92,7 +92,7 @@ pub(crate) async fn register(
         }
     };
 
-    let user_id = match postgres_regist(q.clone(), &postgres_client).await {
+    let user_id = match postgres_regist(q.clone(), &postgres_client, &conns.argon2).await {
         Err(e) => return Json(e),
         Ok(id) => id,
     };

@@ -1,3 +1,7 @@
+use argon2::{
+    password_hash::{rand_core::OsRng, SaltString},
+    Argon2, PasswordHasher,
+};
 use bb8_bolt::{bolt_client, bolt_proto};
 use bb8_postgres::tokio_postgres::{self, error::SqlState};
 use futures_io::{AsyncRead, AsyncWrite};
@@ -8,11 +12,27 @@ use crate::user_service::{LoginReq, LoginRes};
 pub(crate) async fn postgres_regist(
     user_info: LoginReq,
     postgres_client: &tokio_postgres::Client,
+    argon2: &Argon2<'_>,
 ) -> Result<i64, LoginRes> {
+    let salt = SaltString::generate(&mut OsRng);
+
     match postgres_client
         .execute(
             "INSERT INTO auth (username, password) VALUES ($1, $2)",
-            &[&user_info.username, &user_info.password],
+            &[
+                &user_info.username,
+                &argon2
+                    .hash_password(user_info.password.as_bytes(), &salt)
+                    .map_err(|e| {
+                        error!("generate password hash failed: {e}");
+                        LoginRes {
+                            status_code: 500,
+                            status_msg: "Internal Server Error",
+                            ..Default::default()
+                        }
+                    })?
+                    .to_string(),
+            ],
         )
         .await
     {
