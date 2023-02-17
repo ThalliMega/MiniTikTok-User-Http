@@ -8,7 +8,7 @@ use crate::user_service::{LoginReq, LoginRes};
 pub(crate) async fn postgres_regist(
     user_info: LoginReq,
     postgres_client: &tokio_postgres::Client,
-) -> Result<u32, LoginRes> {
+) -> Result<i64, LoginRes> {
     match postgres_client
         .execute(
             "INSERT INTO auth (username, password) VALUES ($1, $2)",
@@ -55,7 +55,7 @@ pub(crate) async fn postgres_regist(
 pub(crate) async fn retrieve_id(
     username: String,
     postgres: &tokio_postgres::Client,
-) -> Result<u32, LoginRes> {
+) -> Result<i64, LoginRes> {
     match postgres
         .query_opt("SELECT id FROM auth WHERE username = $1", &[&username])
         .await
@@ -85,7 +85,7 @@ pub(crate) async fn retrieve_id(
 
 pub(crate) async fn bolt_regist<S: AsyncRead + AsyncWrite + Unpin>(
     username: String,
-    user_id: u32,
+    user_id: i64,
     bolt_client: &mut bolt_client::Client<S>,
 ) {
     match bolt_client
