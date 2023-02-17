@@ -105,8 +105,13 @@ pub(crate) async fn bolt_regist<S: AsyncRead + AsyncWrite + Unpin>(
     {
         Ok(bolt_proto::Message::Success(m)) => {
             debug!("{m:?}");
-            if let Err(e) = bolt_client.discard(None).await {
-                error!("{e}");
+            match bolt_client
+                .discard(Some([("n", -1)].into_iter().collect()))
+                .await
+            {
+                Ok(bolt_proto::Message::Success(_)) => {}
+                Ok(m) => warn!("{m:?}"),
+                Err(e) => error!("{e}"),
             }
             return;
         }
