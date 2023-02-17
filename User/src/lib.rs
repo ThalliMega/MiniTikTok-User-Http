@@ -9,7 +9,9 @@ use bb8_bolt::{
     bolt_proto::version::{V4_3, V4_4},
 };
 use bb8_postgres::tokio_postgres::NoTls;
+use log::{info, warn};
 use proto::{auth_service_client::AuthServiceClient, user_service_client::UserServiceClient};
+use tokio::signal::unix::{signal, SignalKind};
 
 pub mod proto;
 mod user_regist;
@@ -95,9 +97,16 @@ pub async fn start_up() -> Result<(), DynError> {
             get(|| future::ready(hyper::StatusCode::NO_CONTENT)),
         );
 
+    let mut sigterm = signal(SignalKind::terminate())?;
+
     hyper::Server::bind(&(Ipv6Addr::UNSPECIFIED, 14514).into())
         .serve(root_router.into_make_service())
-        .with_graceful_shutdown(async { tokio::signal::ctrl_c().await.unwrap() })
+        .with_graceful_shutdown(async {
+            match sigterm.recv().await {
+                Some(()) => info!("start graceful shutdown"),
+                None => warn!("stream of SIGTERM closed"),
+            }
+        })
         .await?;
 
     Ok(())
