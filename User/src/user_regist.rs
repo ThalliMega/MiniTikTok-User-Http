@@ -1,7 +1,7 @@
 use bb8_bolt::{bolt_client, bolt_proto};
 use bb8_postgres::tokio_postgres::{self, error::SqlState};
 use futures_io::{AsyncRead, AsyncWrite};
-use log::{error, warn};
+use log::{debug, error, warn};
 
 use crate::user_service::{LoginReq, LoginRes};
 
@@ -103,13 +103,16 @@ pub(crate) async fn bolt_regist<S: AsyncRead + AsyncWrite + Unpin>(
         )
         .await
     {
-        Ok(bolt_proto::Message::Success(_)) => {
+        Ok(bolt_proto::Message::Success(m)) => {
+            debug!("{m:?}");
             if let Err(e) = bolt_client.discard(None).await {
-                warn!("{e}");
+                error!("{e}");
             }
             return;
         }
-        Ok(_) => {}
+        Ok(m) => {
+            warn!("{m:?}");
+        }
         Err(e) => {
             error!("{e}");
         }
