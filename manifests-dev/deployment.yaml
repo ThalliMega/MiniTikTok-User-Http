@@ -4,29 +4,29 @@ metadata:
     annotations:
         sidecar.jaegertracing.io/inject: 'true'
     labels:
-        app: bawling-minidouyin-user-http
-    name: bawling-minidouyin-user-http
-    namespace: bawling-minidouyin-user-http
+        app: minitiktok-user-http
+    name: minitiktok-user-http
+    namespace: minitiktok-user-http
 spec:
     selector:
         matchLabels:
-            name: bawling-minidouyin-user-http
+            name: minitiktok-user-http
     template:
         metadata:
             labels:
-                app: bawling-minidouyin-user-http
+                app: minitiktok-user-http
                 branch: dev
                 version: ${BUILD_NUMBER}-${CI_COMMIT_ID}
-                name: bawling-minidouyin-user-http
-                dream-app: bawling-minidouyin-user-http
-                dream-unit: bawling-minidouyin-user-http
+                name: minitiktok-user-http
+                dream-app: minitiktok-user-http
+                dream-unit: minitiktok-user-http
         spec:
             imagePullSecrets:
                 -   name: regcred
             containers:
                 -   image: ${IMAGE}
                     imagePullPolicy: IfNotPresent
-                    name: bawling-minidouyin-user-http
+                    name: minitiktok-user-http
                     readinessProbe:
                         httpGet:
                             path: /health_check
@@ -42,12 +42,6 @@ spec:
                         initialDelaySeconds: 10
                         periodSeconds: 10
                         timeoutSeconds: 1
-                    # lifecycle:
-                    #     preStop:
-                    #         exec:
-                    #             command:
-                    #                 - sleep
-                    #                 - "20"
                     envFrom:
                         -   configMapRef:
                                 name: env-config
