@@ -1,6 +1,6 @@
 [package]
 name = "mini_tiktok_user_http"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -10,7 +10,6 @@ env_logger = { version = "0", default-features = false, features = ["auto-color"
 log = { version = "0", default-features = false }
 prost = { version = "0", default-features = false }
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "signal"] }
-bb8-postgres = "0"
 bb8-bolt = "0"
 tonic = { version = "0", default-features = false, features = ["codegen", "prost", "transport"] }
 axum = { version = "0", default-features = false, features = ["json", "query"] }

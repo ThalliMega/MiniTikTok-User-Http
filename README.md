@@ -33,10 +33,6 @@ The url of the Auth Grpc service.
 
 The url of the User Grpc service.
 
-### POSTGRES_URL
-
-Check the [documention](https://docs.rs/tokio-postgres/latest/tokio_postgres/config/struct.Config.html) for details.
-
 ### RUST_LOG
 
 Check the [documention](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) for details.

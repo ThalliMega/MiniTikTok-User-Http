@@ -1,14 +1,20 @@
+use std::hash::{BuildHasher, Hash, Hasher};
+
 use crate::AuthServiceClient;
+use argon2::{
+    password_hash::{rand_core::OsRng, SaltString},
+    PasswordHasher,
+};
 use axum::{
     extract::{Query, State},
     Json,
 };
-use log::error;
+use bb8_bolt::bolt_proto;
+use log::{error, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     proto::{auth_response::AuthStatusCode, token_response::TokenStatusCode, *},
-    user_regist::{bolt_regist, postgres_regist},
     SharedState,
 };
 
@@ -75,32 +81,89 @@ pub(crate) async fn register(
     State(mut conns): State<SharedState>,
     Query(q): Query<LoginReq>,
 ) -> Json<LoginRes> {
+    if q.username.len() > 32 {
+        return Json(LoginRes {
+            status_code: 400,
+            status_msg: "username too long: max length is 32 bytes",
+            ..Default::default()
+        });
+    }
+
+    if q.password.len() > 32 {
+        return Json(LoginRes {
+            status_code: 400,
+            status_msg: "password too long: max length is 32 bytes",
+            ..Default::default()
+        });
+    }
+
     let bad_gateway = Json(LoginRes {
         status_code: 502,
         status_msg: "Bad Gateway",
         ..Default::default()
     });
 
-    let postgres_client = match conns.postgres_pool.get().await {
+    let mut conn = match conns.bolt_pool.get().await {
         Ok(conn) => conn,
         Err(e) => {
-            error!("Connect to Postgres failed: {e}");
+            error!("Connect to graph db failed: {e}");
             return bad_gateway;
         }
     };
 
-    let user_id = match postgres_regist(q.clone(), &postgres_client, &conns.argon2).await {
-        Err(e) => return Json(e),
-        Ok(id) => id,
+    let mut hasher = conns.hash_builder.build_hasher();
+    q.username.hash(&mut hasher);
+    let hash_name = hasher.finish() as i64;
+
+    let salt = SaltString::generate(OsRng);
+    let passwd_h = match conns.argon2.hash_password(q.password.as_bytes(), &salt) {
+        Ok(hash) => hash.to_string(),
+        Err(e) => {
+            error!("{e}");
+            return Json(LoginRes {
+                status_code: 500,
+                status_msg: "Internal Server Error",
+                ..Default::default()
+            });
+        }
     };
 
-    let mut bolt_client = if let Ok(conn) = conns.bolt_pool.get().await {
-        conn
-    } else {
-        return bad_gateway;
-    };
-    // TODO: uncessary clone?
-    bolt_regist(q.username.clone(), user_id, &mut bolt_client).await;
+    match conn.run("CREATE (:User { id: $id, username: $username, password_hash: $passwd_h, avatar: \"\", background_image: \"\", signature: \"\" });", Some([("id", bolt_proto::value::Value::Integer(hash_name)), ("username", q.username.clone().into()), ("passwd_h", passwd_h.into())].into_iter().collect()), None).await {
+        Ok(bolt_proto::Message::Success(_)) => {}
+        Ok(bolt_proto::Message::Failure(f)) if matches!(f.metadata().get("code"), Some(bolt_proto::Value::String(s)) if s == "Neo.ClientError.Schema.ConstraintValidationFailed") => {
+            // TODO: discard result
+            _ = conn.reset().await;
+            return Json(LoginRes {
+                status_code: 403,
+                status_msg: "The username may be occupied.",
+                ..Default::default()
+            });
+        }
+        Ok(e) => {
+            warn!("{e:?}");
+            // TODO: discard result
+            _ = conn.reset().await;
+            return bad_gateway;
+        }
+        Err(e) => {
+            error!("{e}");
+            return bad_gateway;
+        }
+    }
+
+    match conn.discard(Some([("n", -1)].into_iter().collect())).await {
+        Ok(bolt_proto::Message::Success(_)) => {}
+        Ok(e) => {
+            warn!("{e:?}");
+            // TODO: discard result
+            _ = conn.reset().await;
+            return bad_gateway;
+        }
+        Err(e) => {
+            error!("{e}");
+            return bad_gateway;
+        }
+    }
 
     real_login(q, &mut conns.auth_client).await
 }

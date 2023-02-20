@@ -1,4 +1,4 @@
-use std::{env, error::Error, future, net::Ipv6Addr};
+use std::{collections::hash_map::RandomState, env, error::Error, future, net::Ipv6Addr};
 
 use argon2::Argon2;
 use axum::{
@@ -9,24 +9,22 @@ use bb8_bolt::{
     bolt_client,
     bolt_proto::version::{V4_3, V4_4},
 };
-use bb8_postgres::tokio_postgres::NoTls;
 use log::{info, warn};
 use proto::{auth_service_client::AuthServiceClient, user_service_client::UserServiceClient};
 use tokio::signal::unix::{signal, SignalKind};
 
 pub mod proto;
-mod user_regist;
 mod user_service;
 
 type DynError = Box<dyn Error + Send + Sync>;
 
 #[derive(Clone)]
 struct SharedState {
-    postgres_pool: bb8::Pool<bb8_postgres::PostgresConnectionManager<NoTls>>,
     bolt_pool: bb8::Pool<bb8_bolt::Manager>,
     auth_client: AuthServiceClient<tonic::transport::Channel>,
     user_client: UserServiceClient<tonic::transport::Channel>,
     argon2: Argon2<'static>,
+    hash_builder: RandomState,
 }
 
 /// This function will initialize the [env-logger](https://docs.rs/env_logger) and start the server.  
@@ -64,14 +62,6 @@ pub async fn start_up() -> Result<(), DynError> {
 
     let user_url = get_env_var("USER_URL")?;
 
-    let postgres_url = get_env_var("POSTGRES_URL")?;
-
-    let postgres_config = postgres_url.parse()?;
-
-    let postgres_manager = bb8_postgres::PostgresConnectionManager::new(postgres_config, NoTls);
-
-    let postgres_pool = bb8::Pool::builder().build(postgres_manager).await?;
-
     let bolt_manager =
         bb8_bolt::Manager::new(bolt_url, bolt_domain, [V4_4, V4_3, 0, 0], bolt_metadata).await?;
 
@@ -89,11 +79,11 @@ pub async fn start_up() -> Result<(), DynError> {
     let root_router = Router::new()
         .nest("/douyin/user", router)
         .with_state(SharedState {
-            postgres_pool,
             bolt_pool,
             auth_client,
             user_client,
             argon2: Argon2::default(),
+            hash_builder: RandomState::new(),
         })
         .route(
             "/health_check",
