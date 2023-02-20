@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-    name: bawling-minidouyin-user-http
-    namespace: bawling-minidouyin-user-http
+    name: minitiktok-user-http
+    namespace: minitiktok-user-http
 spec:
-    ports: # 自己写吧
+    ports:
         -   name: http
             port: 14514
             protocol: TCP
             targetPort: 14514
     selector:
-        name: bawling-minidouyin-user-http
+        name: minitiktok-user-http
         branch: dev
     type: ClusterIP
